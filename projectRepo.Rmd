@@ -1,0 +1,91 @@
+---
+title: "Practical-Machine-Learning--Project-Work"
+output: html_document
+---
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+##Below are the steps I followed.
+
+* Loading all required libraries:
+```{r}
+library(randomForest)
+library(RColorBrewer)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+```
+
+* Loading data files
+```{r}
+trainingData   <- read.csv("./pml-training.csv",na.strings=c("NA",""))
+trainColNames <- colnames(trainingData)
+
+testingData   <- read.csv("./pml-testing.csv",na.strings=c("NA",""))
+testColNames <- colnames(testingData)
+```
+
+* Deleting all NA variables
+```{r}
+funcOutput <- function(input) {
+    as.vector(apply(input, 2, function(input) length(which(!is.na(input)))))
+}
+
+
+numberOfCols <- funcOutput(trainingData)
+notRequired <- c()
+for (indx in 1:length(numberOfCols)) {
+    if (numberOfCols[indx] < nrow(trainingData)) {
+        notRequired <- c(notRequired, trainColNames[indx])
+    }
+}
+
+# Deleting NA variables and first 7 column for training data
+trainingData <- trainingData[,!(names(trainingData) %in% notRequired)]
+trainingData <- trainingData[,8:length(colnames(trainingData))]
+nearZeroVar(trainingData, saveMetrics=TRUE)
+
+# Deleting NA variables and first 7 column for testing data
+testingData <- testingData[,!(names(testingData) %in% notRequired)]
+testingData <- testingData[,8:length(colnames(testingData))]
+```
+
+* Dividing data into 70% for training and 30% for testing
+```{r}
+inTrain <- createDataPartition(y=trainingData$classe, p=0.7, list=FALSE)
+partionedTrainingData <- trainingData[inTrain,]
+partionedTestingData <- trainingData[-inTrain,]
+```
+
+* Training model using Decision Tree, predicting and creating confusion matrix
+```{r}
+modelOne <- rpart(classe ~ ., data=partionedTrainingData, method="class")
+predictionResultOne <- predict(modelOne, partionedTestingData, type = "class")
+confusionMatrix(predictionResultOne, partionedTestingData$classe)
+```
+
+* using Random Forests model for predicting in-sample error
+```{r}
+modelTwo <- randomForest(classe ~. , data=partionedTrainingData)
+predictionResultTwo <- predict(modelTwo, partionedTestingData, type = "class")
+confusionMatrix(predictionResultTwo, partionedTestingData $classe)
+```
+
+* Now checking model performance on 20 test data set
+```{r}
+result<-predict(modelTwo, newdata=testingData)
+result
+```
+
